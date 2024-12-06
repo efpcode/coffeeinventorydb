@@ -64,8 +64,9 @@ public class CoffeeInventoryDB {
     private static void inputNewBean() {
         System.out.println("Enter new bean name:");
         String newBeanName = scanner.nextLine();
-        if (!newBeanName.isBlank())
+        if (!newBeanName.isEmpty())
             insertNewBean(newBeanName);
+
         System.out.println("Press enter to continue:");
         scanner.nextLine();
 
@@ -84,7 +85,10 @@ public class CoffeeInventoryDB {
                 System.out.println(e.getMessage());
                 conn.rollback();
             }
-            conn.commit();
+            System.out.println(" Please confirm new bean insertion default [y]/n: ");
+            if (!scanner.nextLine().equalsIgnoreCase("n"))
+                conn.commit();
+            conn.rollback();
 
         } catch (SQLException e) {
             System.out.println("Something went wrong");
