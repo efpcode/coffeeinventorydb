@@ -64,7 +64,9 @@ public class CoffeeInventoryDB {
     private static void inputNewBean() {
         System.out.println("Enter new bean name:");
         String newBeanName = scanner.nextLine();
-        insertNewBean(newBeanName);
+        if (!newBeanName.isBlank())
+            insertNewBean(newBeanName);
+        System.out.println("Press enter to continue:");
         scanner.nextLine();
 
     }
