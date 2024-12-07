@@ -85,7 +85,7 @@ public class CoffeeInventoryDB {
             ResultSet beans = stmt.executeQuery(sql);
 
             System.out.println(" ");
-            System.out.println("id Column" + " \t\t|\t\t " + "Bean Name");
+            System.out.println("Bean ID" + " \t\t|\t\t " + "Bean Name");
             System.out.println("----------------|-------------------");
 
             while (beans.next()) {
@@ -238,6 +238,17 @@ public class CoffeeInventoryDB {
 
     }
 
+    private static void inputToUpdateBean() {
+        System.out.println("Enter new bean name:");
+        String newBeanName = scanner.nextLine();
+        System.out.println("Enter beanId that corresponds to the bean :");
+        int beanId = scanner.nextInt();
+        if(!newBeanName.isEmpty())
+            updateBean(newBeanName, beanId);
+        System.out.println("Press enter to continue:");
+        scanner.nextLine();
+    }
+
     private static void updateCoffee(String coffeeName, String coffeeRoastLevel, double coffeePrice, int coffeeWeight, int coffeeId) {
         String sql = "UPDATE coffee SET " +
                 "coffeeName = ?, "+
@@ -258,12 +269,15 @@ public class CoffeeInventoryDB {
             pstmt.setInt(4, coffeeWeight);
             pstmt.setInt(5, coffeeId);
             pstmt.executeUpdate();
-            scanner.nextLine();
             System.out.println("Confirm updated for coffee [y]/n");
-            if(!scanner.nextLine().equalsIgnoreCase("n"))
+            scanner.nextLine();
+            if(!scanner.nextLine().equalsIgnoreCase("n")) {
                 conn.commit();
-            else
+            }
+            else{
+
                 conn.rollback();
+            }
 
             }catch (SQLException e){
                 System.out.println("Could not update coffee");
@@ -277,7 +291,7 @@ public class CoffeeInventoryDB {
     }
 
     private static void updateBean(String beanName, int beanId) {
-        String sql = "UPDATE coffee SET beanName = ? WHERE beanId = ?";
+        String sql = "UPDATE bean SET beanName = ? WHERE beanId = ?";
         try(
                 Connection conn = dbConnect();
                 PreparedStatement pstmt = conn.prepareStatement(sql);
@@ -286,17 +300,19 @@ public class CoffeeInventoryDB {
             try{
                 pstmt.setString(1, beanName);
                 pstmt.setInt(2, beanId);
-                pstmt.executeUpdate();
-                scanner.nextLine();
                 System.out.println("Confirm updated for coffee [y]/n");
-                if(scanner.nextLine().equalsIgnoreCase("n"))
-                    conn.commit();
-                else
+                scanner.nextLine();
+                if(scanner.nextLine().equals("n"))
                     conn.rollback();
+                else{
+                    pstmt.executeUpdate();
+                    conn.commit();
+                }
 
             }catch (SQLException e){
                 System.out.println("Could not update Bean");
                 System.out.println(e.getMessage());
+                conn.rollback();
             }
 
 
@@ -313,6 +329,9 @@ public class CoffeeInventoryDB {
         showAllCoffees();
         inputToUpdateCoffee();
         showAllCoffees();
+        showAllBeans();
+        inputToUpdateBean();
+        showAllBeans();
 
 
 
