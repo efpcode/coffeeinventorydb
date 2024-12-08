@@ -21,7 +21,6 @@ public class CoffeeInventoryDB {
     }
 
     private static void menuScreen() {
-        System.out.println("Pick an option:");
         List<String> options = List.of(
                 "Exit Program",
                 "Show coffee inventory",
@@ -32,8 +31,9 @@ public class CoffeeInventoryDB {
                 "Update bean",
                 "Delete coffee",
                 "Delete bean",
-                "Search in coffee inventory",
-                "Search in bean inventory",
+                "Search in coffee inventory table",
+                "List coffee favorites",
+                "Add/Remove a coffee to favorites",
                 "Show menu screen"
         );
 
@@ -43,17 +43,17 @@ public class CoffeeInventoryDB {
         }
     }
 
-    public static List<Integer> getMaxColumnWidthForCoffeeTable(){
+    public static List<Integer> getMaxColumnWidthForCoffeeTable() {
         List<Integer> columnWidths = new ArrayList();
-        String sql = "SELECT"+
-                " max(length(coffeeName)) AS cName,"+
-                " max(length(coffeeRoaster)) AS cRoaster,"+
-                " max(length(coffeeRoastLevel)) AS cRoastLevel,"+
-                " max(length(coffeeOrigin)) AS cOrigin,"+
-                " max(length(coffeeArticle)) AS cArticle,"+
-                " max(length(cast(coffee.coffeePrice AS TEXT))) AS cPrice,"+
-                " max(length(cast(coffee.coffeeWeight AS TEXT))) AS cWeight,"+
-                " max(length(cast(bean.beanName AS TEXT))) AS cBeanName"+
+        String sql = "SELECT" +
+                " max(length(coffeeName)) AS cName," +
+                " max(length(coffeeRoaster)) AS cRoaster," +
+                " max(length(coffeeRoastLevel)) AS cRoastLevel," +
+                " max(length(coffeeOrigin)) AS cOrigin," +
+                " max(length(coffeeArticle)) AS cArticle," +
+                " max(length(cast(coffee.coffeePrice AS TEXT))) AS cPrice," +
+                " max(length(cast(coffee.coffeeWeight AS TEXT))) AS cWeight," +
+                " max(length(cast(bean.beanName AS TEXT))) AS cBeanName" +
                 " FROM  coffee, bean";
 
         try {
@@ -71,7 +71,7 @@ public class CoffeeInventoryDB {
 
             }
 
-        }catch(SQLException e){
+        } catch (SQLException e) {
             System.out.println("Something went wrong");
             System.out.println(e.getMessage());
         }
@@ -103,26 +103,27 @@ public class CoffeeInventoryDB {
     private static void showAllCoffees() {
         String sql = "SELECT * FROM coffee";
         String spacer = " | ";
-        try{
+        try {
             Connection conn = dbConnect();
             Statement stmt = conn.createStatement();
             ResultSet coffees = stmt.executeQuery(sql);
             while (coffees.next()) {
                 System.out.println(
-                        coffees.getInt("coffeeId")+ spacer +
-                        coffees.getString("coffeeName") + spacer +
-                        coffees.getString("coffeeRoaster") + spacer +
-                        coffees.getString("coffeeRoastLevel") + spacer +
-                        coffees.getString("coffeeOrigin") + spacer +
-                        coffees.getString("coffeeArticle") + spacer +
-                        coffees.getDouble("coffeePrice") + spacer +
-                        coffees.getInt("coffeeWeight") + spacer +
-                        coffees.getInt("coffeeBeanId")
+                        coffees.getInt("coffeeId") + spacer +
+                                coffees.getString("coffeeName") + spacer +
+                                coffees.getString("coffeeRoaster") + spacer +
+                                coffees.getString("coffeeRoastLevel") + spacer +
+                                coffees.getString("coffeeOrigin") + spacer +
+                                coffees.getString("coffeeArticle") + spacer +
+                                coffees.getDouble("coffeePrice") + spacer +
+                                coffees.getInt("coffeeWeight") + spacer +
+                                coffees.getString("coffeeFavorite") + spacer +
+                                coffees.getInt("coffeeBeanId")
 
-                        );
+                );
             }
 
-        }catch (SQLException e){
+        } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
     }
@@ -189,14 +190,47 @@ public class CoffeeInventoryDB {
         String newBeanName = scanner.nextLine();
         System.out.println("Enter beanId that corresponds to the bean :");
         int beanId = scanner.nextInt();
-        if(!newBeanName.isEmpty())
+        if (!newBeanName.isEmpty())
             updateBean(newBeanName, beanId);
         showAllBeans();
         System.out.println("Press enter to continue:");
         scanner.nextLine();
     }
 
-    private static void insertNewCoffee(String coffeeName, String coffeeRoasterName, String coffeeRoastLevel ,String coffeeOrigin, double coffeePrice, int coffeeWeight ,int beanId) {
+
+    private static void inputToDeleteCoffee() {
+        showAllCoffees();
+        System.out.println("Enter coffeeId to be deleted: ");
+        var rmCoffee = scanner.nextInt();
+        deleteCoffee(rmCoffee);
+        showAllCoffees();
+        System.out.println("Press enter to continue");
+        scanner.nextLine();
+
+    }
+
+    private static void inputToDeleteBean() {
+        showAllBeans();
+        System.out.println("Enter beanId to be deleted: ");
+        var rmBean = scanner.nextInt();
+        deleteBean(rmBean);
+        showAllBeans();
+        System.out.println("Press enter to continue");
+        scanner.nextLine();
+    }
+
+    private static void inputCoffeeInventorySearch() {
+        System.out.println("Please enter a text snippet to search for: ");
+        var pattern = scanner.nextLine();
+        if (!pattern.isEmpty()) {
+            var newPattern = "%" + pattern + "%";
+            coffeeInventorySearch(newPattern);
+        }
+        System.out.println("Press enter to continue...");
+        scanner.nextLine();
+    }
+
+    private static void insertNewCoffee(String coffeeName, String coffeeRoasterName, String coffeeRoastLevel, String coffeeOrigin, double coffeePrice, int coffeeWeight, int beanId) {
         String sql = "INSERT INTO coffee (coffeeName, coffeeRoaster, coffeeRoastLevel, coffeeOrigin, coffeePrice, coffeeWeight, coffeeBeanId) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try {
             Connection conn = dbConnect();
@@ -219,9 +253,9 @@ public class CoffeeInventoryDB {
             System.out.println(" Please confirm new coffee insertion default [y]/n: ");
             scanner.nextLine();
 
-            if(!scanner.nextLine().equalsIgnoreCase("n")) {
+            if (!scanner.nextLine().equalsIgnoreCase("n")) {
                 conn.commit();
-            }else{
+            } else {
                 conn.rollback();
             }
 
@@ -248,7 +282,7 @@ public class CoffeeInventoryDB {
 
             System.out.println(" Please confirm new coffee insertion default [y]/n: ");
 
-            if(!scanner.nextLine().equalsIgnoreCase("n"))
+            if (!scanner.nextLine().equalsIgnoreCase("n"))
                 conn.commit();
             else
                 conn.rollback();
@@ -261,126 +295,105 @@ public class CoffeeInventoryDB {
 
     private static void updateCoffee(String coffeeName, String coffeeRoastLevel, double coffeePrice, int coffeeWeight, int coffeeId) {
         String sql = "UPDATE coffee SET " +
-                "coffeeName = ?, "+
-                "coffeeRoastLevel = ?, "+
-                "coffeePrice = ?, "+
-                "coffeeWeight = ? "+
+                "coffeeName = ?, " +
+                "coffeeRoastLevel = ?, " +
+                "coffeePrice = ?, " +
+                "coffeeWeight = ? " +
                 "WHERE coffeeId = ?";
 
-        try(
+        try (
                 Connection conn = dbConnect();
                 PreparedStatement pstmt = conn.prepareStatement(sql);
-        ){
+        ) {
             conn.setAutoCommit(false);
-            try{
-            pstmt.setString(1, coffeeName);
-            pstmt.setString(2, coffeeRoastLevel);
-            pstmt.setDouble(3, coffeePrice);
-            pstmt.setInt(4, coffeeWeight);
-            pstmt.setInt(5, coffeeId);
-            pstmt.executeUpdate();
-            System.out.println("Confirm updated for coffee [y]/n");
-            scanner.nextLine();
-            if(!scanner.nextLine().equalsIgnoreCase("n")) {
-                conn.commit();
-            }
-            else{
+            try {
+                pstmt.setString(1, coffeeName);
+                pstmt.setString(2, coffeeRoastLevel);
+                pstmt.setDouble(3, coffeePrice);
+                pstmt.setInt(4, coffeeWeight);
+                pstmt.setInt(5, coffeeId);
+                pstmt.executeUpdate();
+                System.out.println("Confirm updated for coffee [y]/n");
+                scanner.nextLine();
+                if (!scanner.nextLine().equalsIgnoreCase("n")) {
+                    conn.commit();
+                } else {
 
-                conn.rollback();
-            }
+                    conn.rollback();
+                }
 
-            }catch (SQLException e){
+            } catch (SQLException e) {
                 System.out.println("Could not update coffee");
                 System.out.println(e.getMessage());
                 conn.rollback();
             }
 
-        }catch (SQLException e){
+        } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
     }
 
     private static void updateBean(String beanName, int beanId) {
         String sql = "UPDATE bean SET beanName = ? WHERE beanId = ?";
-        try(
+        try (
                 Connection conn = dbConnect();
                 PreparedStatement pstmt = conn.prepareStatement(sql);
-        ){
+        ) {
             conn.setAutoCommit(false);
-            try{
+            try {
                 pstmt.setString(1, beanName);
                 pstmt.setInt(2, beanId);
                 pstmt.executeUpdate();
                 System.out.println("Confirm updated for coffee [y]/n");
                 scanner.nextLine();
-                if(scanner.nextLine().equals("n"))
+                if (scanner.nextLine().equals("n"))
                     conn.rollback();
-                else{
+                else {
                     conn.commit();
                 }
 
-            }catch (SQLException e){
+            } catch (SQLException e) {
                 System.out.println("Could not update Bean");
                 System.out.println(e.getMessage());
                 conn.rollback();
             }
 
 
-        }catch (SQLException e){
+        } catch (SQLException e) {
             System.out.println("SQL Exception see below: ");
             System.out.println(e.getMessage());
         }
     }
 
 
-    private static void inputToDeleteCoffee() {
-        showAllCoffees();
-        System.out.println("Enter coffeeId to be deleted: ");
-        var rmCoffee = scanner.nextInt();
-        deleteCoffee(rmCoffee);
-        showAllCoffees();
-        System.out.println("Press enter to continue");
-        scanner.nextLine();
-
-    }
-
-    private static void inputToDeleteBean() {
-        showAllBeans();
-        System.out.println("Enter beanId to be deleted: ");
-        var rmBean = scanner.nextInt();
-        deleteBean(rmBean);
-        showAllBeans();
-        System.out.println("Press enter to continue");
-        scanner.nextLine();
-    }
-
     private static void deleteCoffee(int coffeeId) {
         String sql = "DELETE FROM coffee WHERE coffeeId = ?";
 
-        try(
+        try (
                 Connection conn = dbConnect();
                 PreparedStatement pstmt = conn.prepareStatement(sql);
 
-        ){conn.setAutoCommit(false);
-            try{
+        ) {
+            conn.setAutoCommit(false);
+            try {
                 pstmt.setInt(1, coffeeId);
                 pstmt.executeUpdate();
                 System.out.println("Confirm deleted for coffee [y]/n");
                 scanner.nextLine();
-                if(scanner.nextLine().equals("n")){
-                conn.rollback();}
-                else {
+                if (scanner.nextLine().equals("n")) {
+                    conn.rollback();
+                } else {
                     conn.commit();
 
                 }
 
-            }catch (SQLException e){
+            } catch (SQLException e) {
                 System.out.println("SQL Exception see below: ");
                 System.out.println(e.getMessage());
                 conn.rollback();
             }
 
-        }catch (SQLException e){
+        } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
     }
@@ -388,41 +401,153 @@ public class CoffeeInventoryDB {
     private static void deleteBean(int beanId) {
         String sql = "DELETE FROM bean WHERE beanId = ?";
 
-        try(
+        try (
                 Connection conn = dbConnect();
                 PreparedStatement pstmt = conn.prepareStatement(sql);
 
-        ){conn.setAutoCommit(false);
-            try{
+        ) {
+            conn.setAutoCommit(false);
+            try {
                 pstmt.setInt(1, beanId);
                 pstmt.executeUpdate();
                 System.out.println("Confirm deleted for coffee [y]/n");
                 scanner.nextLine();
-                if(scanner.nextLine().equals("n")){
-                    conn.rollback();}
-                else {
+                if (scanner.nextLine().equals("n")) {
+                    conn.rollback();
+                } else {
                     conn.commit();
 
                 }
 
-            }catch (SQLException e){
+            } catch (SQLException e) {
                 System.out.println("SQL Exception see below: ");
                 System.out.println(e.getMessage());
                 conn.rollback();
             }
 
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+
+    private static void coffeeInventorySearch(String textPattern) {
+        String sql = "SELECT coffeeName, coffeeRoaster, coffeeRoastLevel, coffeeOrigin, coffeePrice, beanName FROM coffee " +
+                "INNER JOIN bean ON bean.beanId = coffee.coffeeBeanId " +
+                "WHERE coffeeName LIKE ? " +
+                "OR coffeeRoaster LIKE ? " +
+                "OR coffeeRoastLevel LIKE ? " +
+                "OR coffeeOrigin LIKE ? " +
+                "OR beanName LIKE ? ";
+
+        try {
+            Connection conn = dbConnect();
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, textPattern);
+            pstmt.setString(2, textPattern);
+            pstmt.setString(3, textPattern);
+            pstmt.setString(4, textPattern);
+            pstmt.setString(5, textPattern);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                String coffeeName = rs.getString("coffeeName");
+                String coffeeRoaster = rs.getString("coffeeRoaster");
+                String coffeeRoastLevel = rs.getString("coffeeRoastLevel");
+                String coffeeOrigin = rs.getString("coffeeOrigin");
+                double coffeePrice = rs.getDouble("coffeePrice");
+                String beanName = rs.getString("beanName");
+                System.out.printf("%s | %s | %s | %s | %.2f | %s\n", coffeeName, coffeeRoaster, coffeeRoastLevel, coffeeOrigin, coffeePrice, beanName);
+            }
+
+
+        } catch (SQLException e) {
+            System.out.println("Could not search for given pattern see error below");
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private static void showFavoritesCoffees() {
+        String sql = "SELECT coffeeName, coffeeRoaster, coffeeRoastLevel, coffeeOrigin, coffeePrice, coffeeWeight ,beanName FROM coffee " +
+                "INNER JOIN bean ON bean.beanId = coffee.coffeeBeanId " +
+                "WHERE coffeeFavorite = true ";
+
+        try (
+                Connection conn = dbConnect();
+                Statement stmt = conn.createStatement();
+        ) {
+            ResultSet rs = stmt.executeQuery(sql);
+            while (rs.next()) {
+                String coffeeName = rs.getString("coffeeName");
+                String coffeeRoaster = rs.getString("coffeeRoaster");
+                String coffeeRoastLevel = rs.getString("coffeeRoastLevel");
+                String coffeeOrigin = rs.getString("coffeeOrigin");
+                double coffeePrice = rs.getDouble("coffeePrice");
+                int coffeeWeight = rs.getInt("coffeeWeight");
+                String beanName = rs.getString("beanName");
+                System.out.printf("%s | %s | %s | %s | %.2f | %d | %s\n", coffeeName, coffeeRoaster, coffeeRoastLevel, coffeeOrigin, coffeePrice, coffeeWeight, beanName);
+            }
+
+
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private static void inputToFavoriteCoffee(){
+        showAllCoffees();
+        System.out.println("\n");
+        System.out.println("Please pick a coffee ID (Digit) to update/remove as favorite");
+        int favoriteCoffee = scanner.nextInt();
+        scanner.nextLine();
+
+        System.out.println("Please select if coffee is favorite: y/[n] ");
+        String userInput = scanner.nextLine();
+
+        var coffeeIsFavorite = userInput.equals("y");
+        updateFavoritesCoffee(favoriteCoffee, coffeeIsFavorite);
+        System.out.println("Press enter to continue..");
+        showFavoritesCoffees();
+        scanner.nextLine();
+
+    }
+
+    private static void updateFavoritesCoffee(int coffeeId, boolean favorite) {
+        String sql = "UPDATE coffee SET coffeeFavorite = ? WHERE coffeeId = ?";
+        try(
+                Connection conn = dbConnect();
+                PreparedStatement pstmt = conn.prepareStatement(sql);
+                ){
+                    conn.setAutoCommit(false);
+                    try{
+                        pstmt.setBoolean(1, favorite);
+                        pstmt.setInt(2, coffeeId);
+                        pstmt.executeUpdate();
+
+                        System.out.println("Confirm updated for coffee [y]/n");
+                        if (!scanner.nextLine().equals("n")) {
+                            System.out.println("Added as favorite");
+                            conn.commit();
+                        }else {
+                            System.out.println("Not added as favorite");
+                            conn.rollback();
+                        }
+
+                    }catch (SQLException e){
+                        System.out.println("SQL Exception see below: ");
+                        System.out.println(e.getMessage());
+                        conn.rollback();
+                    }
         }catch (SQLException e){
             System.out.println(e.getMessage());
         }
     }
 
 
-
     public static void main(String[] args) {
         boolean isLoop = false;
         menuScreen();
         while (!isLoop) {
-            System.out.println("\n >>> Pick an option below:");
+            System.out.println("\n>>> 1: Exit 13:Menu Screen\n>>> Pick an option below:");
             int userInput = scanner.nextInt();
             scanner.nextLine();
             switch (userInput) {
@@ -435,11 +560,14 @@ public class CoffeeInventoryDB {
                 case 7 -> inputToUpdateBean();
                 case 8 -> inputToDeleteCoffee();
                 case 9 -> inputToDeleteBean();
-                case 10 -> menuScreen();
+                case 10 -> inputCoffeeInventorySearch();
+                case 11 -> showFavoritesCoffees();
+                case 12 -> inputToFavoriteCoffee();
+                case 13 -> menuScreen();
 
             }
-            System.out.println("Bye bye !");
         }
+        System.out.println("Bye bye !");
 
 
     }
