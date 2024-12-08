@@ -30,6 +30,8 @@ public class CoffeeInventoryDB {
                 "Add new bean",
                 "Update coffee",
                 "Update bean",
+                "Delete coffee",
+                "Delete bean",
                 "Search in coffee inventory",
                 "Search in bean inventory",
                 "Show menu screen"
@@ -126,10 +128,12 @@ public class CoffeeInventoryDB {
     }
 
     private static void inputNewBean() {
+        showAllBeans();
         System.out.println("Enter new bean name:");
         String newBeanName = scanner.nextLine();
         if (!newBeanName.isEmpty())
             insertNewBean(newBeanName);
+        showAllBeans();
 
         System.out.println("Press enter to continue:");
         scanner.nextLine();
@@ -137,6 +141,7 @@ public class CoffeeInventoryDB {
     }
 
     private static void inputNewCoffee() {
+        showAllCoffees();
         System.out.println("Enter new coffee:");
         String coffeeName = scanner.nextLine();
         System.out.println("Enter new coffee roaster name:");
@@ -152,10 +157,43 @@ public class CoffeeInventoryDB {
         System.out.println("Enter beanId for bean table:");
         int beanId = scanner.nextInt();
         insertNewCoffee(coffeeName, coffeeRoasterName, roastLevel, coffeeOrigin, coffeePrice, coffeeWeight, beanId);
+        showAllCoffees();
         System.out.println("Press enter to continue:");
         scanner.nextLine();
 
 
+    }
+
+    private static void inputToUpdateCoffee() {
+        showAllCoffees();
+        System.out.println("Enter new coffee name:");
+        String coffeeName = scanner.nextLine();
+        System.out.println("Enter new coffee roast level:");
+        String coffeeRoasterName = scanner.nextLine();
+        System.out.println("Enter new coffee price:");
+        double coffeePrice = scanner.nextDouble();
+        System.out.println("Enter new coffee weight:");
+        int coffeeWeight = scanner.nextInt();
+        System.out.println("Enter coffeeId for coffee table:");
+        int coffeeId = scanner.nextInt();
+        updateCoffee(coffeeName, coffeeRoasterName, coffeePrice, coffeeWeight, coffeeId);
+        showAllCoffees();
+        System.out.println("Press enter to continue:");
+        scanner.nextLine();
+
+    }
+
+    private static void inputToUpdateBean() {
+        showAllBeans();
+        System.out.println("Enter new bean name:");
+        String newBeanName = scanner.nextLine();
+        System.out.println("Enter beanId that corresponds to the bean :");
+        int beanId = scanner.nextInt();
+        if(!newBeanName.isEmpty())
+            updateBean(newBeanName, beanId);
+        showAllBeans();
+        System.out.println("Press enter to continue:");
+        scanner.nextLine();
     }
 
     private static void insertNewCoffee(String coffeeName, String coffeeRoasterName, String coffeeRoastLevel ,String coffeeOrigin, double coffeePrice, int coffeeWeight ,int beanId) {
@@ -221,34 +259,6 @@ public class CoffeeInventoryDB {
         }
     }
 
-    private static void inputToUpdateCoffee() {
-        System.out.println("Enter new coffee name:");
-        String coffeeName = scanner.nextLine();
-        System.out.println("Enter new coffee roast level:");
-        String coffeeRoasterName = scanner.nextLine();
-        System.out.println("Enter new coffee price:");
-        double coffeePrice = scanner.nextDouble();
-        System.out.println("Enter new coffee weight:");
-        int coffeeWeight = scanner.nextInt();
-        System.out.println("Enter coffeeId for coffee table:");
-        int coffeeId = scanner.nextInt();
-        updateCoffee(coffeeName, coffeeRoasterName, coffeePrice, coffeeWeight, coffeeId);
-        System.out.println("Press enter to continue:");
-        scanner.nextLine();
-
-    }
-
-    private static void inputToUpdateBean() {
-        System.out.println("Enter new bean name:");
-        String newBeanName = scanner.nextLine();
-        System.out.println("Enter beanId that corresponds to the bean :");
-        int beanId = scanner.nextInt();
-        if(!newBeanName.isEmpty())
-            updateBean(newBeanName, beanId);
-        System.out.println("Press enter to continue:");
-        scanner.nextLine();
-    }
-
     private static void updateCoffee(String coffeeName, String coffeeRoastLevel, double coffeePrice, int coffeeWeight, int coffeeId) {
         String sql = "UPDATE coffee SET " +
                 "coffeeName = ?, "+
@@ -300,12 +310,12 @@ public class CoffeeInventoryDB {
             try{
                 pstmt.setString(1, beanName);
                 pstmt.setInt(2, beanId);
+                pstmt.executeUpdate();
                 System.out.println("Confirm updated for coffee [y]/n");
                 scanner.nextLine();
                 if(scanner.nextLine().equals("n"))
                     conn.rollback();
                 else{
-                    pstmt.executeUpdate();
                     conn.commit();
                 }
 
@@ -323,16 +333,113 @@ public class CoffeeInventoryDB {
     }
 
 
+    private static void inputToDeleteCoffee() {
+        showAllCoffees();
+        System.out.println("Enter coffeeId to be deleted: ");
+        var rmCoffee = scanner.nextInt();
+        deleteCoffee(rmCoffee);
+        showAllCoffees();
+        System.out.println("Press enter to continue");
+        scanner.nextLine();
+
+    }
+
+    private static void inputToDeleteBean() {
+        showAllBeans();
+        System.out.println("Enter beanId to be deleted: ");
+        var rmBean = scanner.nextInt();
+        deleteBean(rmBean);
+        showAllBeans();
+        System.out.println("Press enter to continue");
+        scanner.nextLine();
+    }
+
+    private static void deleteCoffee(int coffeeId) {
+        String sql = "DELETE FROM coffee WHERE coffeeId = ?";
+
+        try(
+                Connection conn = dbConnect();
+                PreparedStatement pstmt = conn.prepareStatement(sql);
+
+        ){conn.setAutoCommit(false);
+            try{
+                pstmt.setInt(1, coffeeId);
+                pstmt.executeUpdate();
+                System.out.println("Confirm deleted for coffee [y]/n");
+                scanner.nextLine();
+                if(scanner.nextLine().equals("n")){
+                conn.rollback();}
+                else {
+                    conn.commit();
+
+                }
+
+            }catch (SQLException e){
+                System.out.println("SQL Exception see below: ");
+                System.out.println(e.getMessage());
+                conn.rollback();
+            }
+
+        }catch (SQLException e){
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private static void deleteBean(int beanId) {
+        String sql = "DELETE FROM bean WHERE beanId = ?";
+
+        try(
+                Connection conn = dbConnect();
+                PreparedStatement pstmt = conn.prepareStatement(sql);
+
+        ){conn.setAutoCommit(false);
+            try{
+                pstmt.setInt(1, beanId);
+                pstmt.executeUpdate();
+                System.out.println("Confirm deleted for coffee [y]/n");
+                scanner.nextLine();
+                if(scanner.nextLine().equals("n")){
+                    conn.rollback();}
+                else {
+                    conn.commit();
+
+                }
+
+            }catch (SQLException e){
+                System.out.println("SQL Exception see below: ");
+                System.out.println(e.getMessage());
+                conn.rollback();
+            }
+
+        }catch (SQLException e){
+            System.out.println(e.getMessage());
+        }
+    }
+
 
 
     public static void main(String[] args) {
-        showAllCoffees();
-        inputToUpdateCoffee();
-        showAllCoffees();
-        showAllBeans();
-        inputToUpdateBean();
-        showAllBeans();
+        boolean isLoop = false;
+        menuScreen();
+        while (!isLoop) {
+            System.out.println("\n >>> Pick an option below:");
+            int userInput = scanner.nextInt();
+            scanner.nextLine();
+            switch (userInput) {
+                case 1 -> isLoop = true;
+                case 2 -> showAllCoffees();
+                case 3 -> showAllBeans();
+                case 4 -> inputNewCoffee();
+                case 5 -> inputNewBean();
+                case 6 -> inputToUpdateCoffee();
+                case 7 -> inputToUpdateBean();
+                case 8 -> inputToDeleteCoffee();
+                case 9 -> inputToDeleteBean();
+                case 10 -> menuScreen();
 
+            }
+            System.out.println("Bye bye !");
+        }
 
 
     }
