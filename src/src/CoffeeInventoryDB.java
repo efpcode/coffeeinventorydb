@@ -34,6 +34,7 @@ public class CoffeeInventoryDB {
                 "Search in coffee inventory table",
                 "List coffee favorites",
                 "Add/Remove a coffee to favorites",
+                "Statistics Coffee Inventory",
                 "Show menu screen"
         );
 
@@ -525,10 +526,10 @@ public class CoffeeInventoryDB {
 
                         System.out.println("Confirm updated for coffee [y]/n");
                         if (!scanner.nextLine().equals("n")) {
-                            System.out.println("Added as favorite");
+                            System.out.println("Added/Removed as favorite");
                             conn.commit();
                         }else {
-                            System.out.println("Not added as favorite");
+                            System.out.println("Noting added to favorite");
                             conn.rollback();
                         }
 
@@ -542,12 +543,40 @@ public class CoffeeInventoryDB {
         }
     }
 
+    public static void showCoffeePricesGroupedByCountries(){
+        String sql = "SELECT coffeeOrigin, coffeePrice, (AVG(coffeePrice/coffeeWeight)*1000.0)  AS avgPricePerKg, " +
+                "COUNT(coffeeOrigin) AS countPerCountry, beanName, COUNT(beanName) AS beanPerCountry " +
+                "FROM coffee " +
+                "INNER JOIN bean b on b.beanId = coffee.coffeeBeanId "+
+                "GROUP BY coffeeOrigin ORDER BY avgPricePerKg DESC ";
+        try {
+            Connection conn = dbConnect();
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(sql);
+            while (rs.next()) {
+                String coffeeOrigin = rs.getString("coffeeOrigin");
+                double coffeePrice = rs.getDouble("coffeePrice");
+                double avgPricePerKg = rs.getDouble("avgPricePerKg");
+                int countPerCountry = rs.getInt("countPerCountry");
+                String beanName = rs.getString("beanName");
+                int beanCount = rs.getInt("beanPerCountry");
+                System.out.printf("%s | %.2f | %.2f | %d | %s | %d \n",coffeeOrigin, coffeePrice, avgPricePerKg,countPerCountry ,beanName, beanCount);
+            }
+
+        }catch (SQLException e){
+            System.out.println("Something went wrong see error below: ");
+            System.out.println(e.getMessage());
+        }
+
+
+    }
+
 
     public static void main(String[] args) {
         boolean isLoop = false;
         menuScreen();
         while (!isLoop) {
-            System.out.println("\n>>> 1: Exit 13:Menu Screen\n>>> Pick an option below:");
+            System.out.println("\n>>> 1: Exit 14:Menu Screen\n>>> Pick an option below:");
             int userInput = scanner.nextInt();
             scanner.nextLine();
             switch (userInput) {
@@ -563,7 +592,8 @@ public class CoffeeInventoryDB {
                 case 10 -> inputCoffeeInventorySearch();
                 case 11 -> showFavoritesCoffees();
                 case 12 -> inputToFavoriteCoffee();
-                case 13 -> menuScreen();
+                case 13 -> showCoffeePricesGroupedByCountries();
+                case 14 -> menuScreen();
 
             }
         }
