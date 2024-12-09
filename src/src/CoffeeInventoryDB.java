@@ -1,6 +1,7 @@
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Scanner;
 
@@ -21,6 +22,7 @@ public class CoffeeInventoryDB {
     }
 
     private static void menuScreen() {
+        String sep = " ";
         List<String> options = List.of(
                 "Exit Program",
                 "Show coffee inventory",
@@ -38,8 +40,22 @@ public class CoffeeInventoryDB {
                 "Show menu screen"
         );
 
+        String longestColumnName = options.stream()
+                .max(Comparator.comparingInt(String::length)).get();
+
+
+
         for (int i = 1; i < options.size() + 1; i++) {
-            System.out.printf("%d. %s\n", i, options.get(i - 1));
+            var spacer = sep.repeat(
+                    (longestColumnName.length()-(options.get(i - 1).length() % longestColumnName.length())) % longestColumnName.length());
+            if (i> 10){
+                var newspacer = sep.repeat(
+                        (longestColumnName.length()-(options.get(i - 1).length() % longestColumnName.length())) % longestColumnName.length() -1);
+                spacer = newspacer;
+            }
+            System.out.printf("%d. %s%s  | %d. %s", i, options.get(i - 1), spacer , i+1, options.get(i));
+            System.out.println();
+            i +=1;
 
         }
     }
@@ -128,6 +144,62 @@ public class CoffeeInventoryDB {
             System.out.println(e.getMessage());
         }
     }
+
+    public static void showCoffeePricesGroupedByCountries(){
+        String sql = "SELECT coffeeOrigin, coffeePrice, (AVG(coffeePrice/coffeeWeight)*1000.0)  AS avgPricePerKg, " +
+                "COUNT(coffeeOrigin) AS countPerCountry, beanName, COUNT(beanName) AS beanPerCountry " +
+                "FROM coffee " +
+                "INNER JOIN bean b on b.beanId = coffee.coffeeBeanId "+
+                "GROUP BY coffeeOrigin ORDER BY avgPricePerKg DESC ";
+        try {
+            Connection conn = dbConnect();
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(sql);
+            while (rs.next()) {
+                String coffeeOrigin = rs.getString("coffeeOrigin");
+                double coffeePrice = rs.getDouble("coffeePrice");
+                double avgPricePerKg = rs.getDouble("avgPricePerKg");
+                int countPerCountry = rs.getInt("countPerCountry");
+                String beanName = rs.getString("beanName");
+                int beanCount = rs.getInt("beanPerCountry");
+                System.out.printf("%s | %.2f | %.2f | %d | %s | %d \n",coffeeOrigin, coffeePrice, avgPricePerKg,countPerCountry ,beanName, beanCount);
+            }
+
+        }catch (SQLException e){
+            System.out.println("Something went wrong see error below: ");
+            System.out.println(e.getMessage());
+        }
+
+
+    }
+
+    private static void showFavoritesCoffees() {
+        String sql = "SELECT coffeeName, coffeeRoaster, coffeeRoastLevel, coffeeOrigin, coffeePrice, coffeeWeight ,beanName FROM coffee " +
+                "INNER JOIN bean ON bean.beanId = coffee.coffeeBeanId " +
+                "WHERE coffeeFavorite = true ";
+
+        try (
+                Connection conn = dbConnect();
+                Statement stmt = conn.createStatement();
+        ) {
+            ResultSet rs = stmt.executeQuery(sql);
+            while (rs.next()) {
+                String coffeeName = rs.getString("coffeeName");
+                String coffeeRoaster = rs.getString("coffeeRoaster");
+                String coffeeRoastLevel = rs.getString("coffeeRoastLevel");
+                String coffeeOrigin = rs.getString("coffeeOrigin");
+                double coffeePrice = rs.getDouble("coffeePrice");
+                int coffeeWeight = rs.getInt("coffeeWeight");
+                String beanName = rs.getString("beanName");
+                System.out.printf("%s | %s | %s | %s | %.2f | %d | %s\n", coffeeName, coffeeRoaster, coffeeRoastLevel, coffeeOrigin, coffeePrice, coffeeWeight, beanName);
+            }
+
+
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
 
     private static void inputNewBean() {
         showAllBeans();
@@ -229,6 +301,24 @@ public class CoffeeInventoryDB {
         }
         System.out.println("Press enter to continue...");
         scanner.nextLine();
+    }
+
+    private static void inputToFavoriteCoffee(){
+        showAllCoffees();
+        System.out.println("\n");
+        System.out.println("Please pick a coffee ID (Digit) to update/remove as favorite");
+        int favoriteCoffee = scanner.nextInt();
+        scanner.nextLine();
+
+        System.out.println("Please select if coffee is favorite: y/[n] ");
+        String userInput = scanner.nextLine();
+
+        var coffeeIsFavorite = userInput.equals("y");
+        updateFavoritesCoffee(favoriteCoffee, coffeeIsFavorite);
+        System.out.println("Press enter to continue..");
+        showFavoritesCoffees();
+        scanner.nextLine();
+
     }
 
     private static void insertNewCoffee(String coffeeName, String coffeeRoasterName, String coffeeRoastLevel, String coffeeOrigin, double coffeePrice, int coffeeWeight, int beanId) {
@@ -434,7 +524,7 @@ public class CoffeeInventoryDB {
 
     private static void coffeeInventorySearch(String textPattern) {
         String sql = "SELECT coffeeName, coffeeRoaster, coffeeRoastLevel, coffeeOrigin, coffeePrice, beanName FROM coffee " +
-                "INNER JOIN bean ON bean.beanId = coffee.coffeeBeanId " +
+                "LEFT JOIN bean ON bean.beanId = coffee.coffeeBeanId " +
                 "WHERE coffeeName LIKE ? " +
                 "OR coffeeRoaster LIKE ? " +
                 "OR coffeeRoastLevel LIKE ? " +
@@ -467,50 +557,6 @@ public class CoffeeInventoryDB {
         }
     }
 
-    private static void showFavoritesCoffees() {
-        String sql = "SELECT coffeeName, coffeeRoaster, coffeeRoastLevel, coffeeOrigin, coffeePrice, coffeeWeight ,beanName FROM coffee " +
-                "INNER JOIN bean ON bean.beanId = coffee.coffeeBeanId " +
-                "WHERE coffeeFavorite = true ";
-
-        try (
-                Connection conn = dbConnect();
-                Statement stmt = conn.createStatement();
-        ) {
-            ResultSet rs = stmt.executeQuery(sql);
-            while (rs.next()) {
-                String coffeeName = rs.getString("coffeeName");
-                String coffeeRoaster = rs.getString("coffeeRoaster");
-                String coffeeRoastLevel = rs.getString("coffeeRoastLevel");
-                String coffeeOrigin = rs.getString("coffeeOrigin");
-                double coffeePrice = rs.getDouble("coffeePrice");
-                int coffeeWeight = rs.getInt("coffeeWeight");
-                String beanName = rs.getString("beanName");
-                System.out.printf("%s | %s | %s | %s | %.2f | %d | %s\n", coffeeName, coffeeRoaster, coffeeRoastLevel, coffeeOrigin, coffeePrice, coffeeWeight, beanName);
-            }
-
-
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-        }
-    }
-
-    private static void inputToFavoriteCoffee(){
-        showAllCoffees();
-        System.out.println("\n");
-        System.out.println("Please pick a coffee ID (Digit) to update/remove as favorite");
-        int favoriteCoffee = scanner.nextInt();
-        scanner.nextLine();
-
-        System.out.println("Please select if coffee is favorite: y/[n] ");
-        String userInput = scanner.nextLine();
-
-        var coffeeIsFavorite = userInput.equals("y");
-        updateFavoritesCoffee(favoriteCoffee, coffeeIsFavorite);
-        System.out.println("Press enter to continue..");
-        showFavoritesCoffees();
-        scanner.nextLine();
-
-    }
 
     private static void updateFavoritesCoffee(int coffeeId, boolean favorite) {
         String sql = "UPDATE coffee SET coffeeFavorite = ? WHERE coffeeId = ?";
@@ -543,40 +589,13 @@ public class CoffeeInventoryDB {
         }
     }
 
-    public static void showCoffeePricesGroupedByCountries(){
-        String sql = "SELECT coffeeOrigin, coffeePrice, (AVG(coffeePrice/coffeeWeight)*1000.0)  AS avgPricePerKg, " +
-                "COUNT(coffeeOrigin) AS countPerCountry, beanName, COUNT(beanName) AS beanPerCountry " +
-                "FROM coffee " +
-                "INNER JOIN bean b on b.beanId = coffee.coffeeBeanId "+
-                "GROUP BY coffeeOrigin ORDER BY avgPricePerKg DESC ";
-        try {
-            Connection conn = dbConnect();
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(sql);
-            while (rs.next()) {
-                String coffeeOrigin = rs.getString("coffeeOrigin");
-                double coffeePrice = rs.getDouble("coffeePrice");
-                double avgPricePerKg = rs.getDouble("avgPricePerKg");
-                int countPerCountry = rs.getInt("countPerCountry");
-                String beanName = rs.getString("beanName");
-                int beanCount = rs.getInt("beanPerCountry");
-                System.out.printf("%s | %.2f | %.2f | %d | %s | %d \n",coffeeOrigin, coffeePrice, avgPricePerKg,countPerCountry ,beanName, beanCount);
-            }
-
-        }catch (SQLException e){
-            System.out.println("Something went wrong see error below: ");
-            System.out.println(e.getMessage());
-        }
-
-
-    }
-
 
     public static void main(String[] args) {
         boolean isLoop = false;
+        System.out.println("\n\nWelcome to Coffee Inventory DB\n\n");
         menuScreen();
         while (!isLoop) {
-            System.out.println("\n>>> 1: Exit 14:Menu Screen\n>>> Pick an option below:");
+            System.out.println("\n>>> 1: Exit 14: Menu Screen\n>>> Pick an option below:");
             int userInput = scanner.nextInt();
             scanner.nextLine();
             switch (userInput) {
